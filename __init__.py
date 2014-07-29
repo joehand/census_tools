@@ -1,13 +1,16 @@
 from __future__ import division
 
+import matplotlib
+import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
+import seaborn as sns
 
-from us_census import *
-from plot_functions import *
+from income_bins import calc_inc_weights, plot_inc_bins
+#from plot_functions import *
+from skew_norm import skew_norm
+#from us_census import *
+from utils import group_by_city
 
-# Set matplotlib variables
-matplotlib.rcParams['figure.figsize'] = (10.0, 6.0)
-matplotlib.rcParams['font.size']=12
-matplotlib.rcParams['savefig.dpi']=100
-matplotlib.rcParams['figure.subplot.bottom']=.1
+sns.set_style("whitegrid")
+sns.set_context("talk")
