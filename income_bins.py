@@ -5,7 +5,6 @@ import numpy as np
 from numpy import log
 import seaborn as sns
 
-_colors = sns.color_palette()
 
 def _get_values(cols):
     """ Returns array of int values based on str column names
@@ -40,8 +39,9 @@ def calc_inc_weights(df, group_by='CITY_NAME', weight_filter='^ACSHINC([0-9])+$'
     return df.replace([np.inf, -np.inf], np.nan).dropna(how="all") #drop inf created from above division
 
 
-def plot_inc_bins(df, selector, filter='^ACSHINC([0-9])+$', logx=True,
-                index=None, scatter=False, title=None, xlabel=None, ylabel=None):
+def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True,
+                index=None, scatter=False, legend=True,
+                title=None, xlabel=None, ylabel=None):
     """ Plots income bins for specified selector
 
         1. Select Data
@@ -49,16 +49,13 @@ def plot_inc_bins(df, selector, filter='^ACSHINC([0-9])+$', logx=True,
         3. Calculate Bin values from Columns
         4. Plot Bin Vals vs Col Counts
     """
-
-    df = df[selector] #subset data
-    cols = df.columns #save this to get x values later
-
+    cols = df.filter(regex=filter).columns #save this to get x values later
     if index:
         df = df.set_index(index) #set index if we have one (useful for cities)
-
     df = df.filter(regex=filter).transpose()
+    colors = sns.color_palette(n_colors=len(df.columns))
 
-    for color, col in zip(_colors, df.columns):
+    for color, col in zip(colors, df.columns):
         if logx:
             x = log(_get_values(cols))
         else:
@@ -92,6 +89,7 @@ def plot_inc_bins(df, selector, filter='^ACSHINC([0-9])+$', logx=True,
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
-    plt.legend()
+    if legend:
+        plt.legend()
 
     return df

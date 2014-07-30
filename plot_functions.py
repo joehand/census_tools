@@ -5,14 +5,14 @@ import numpy as np
 import scipy.stats as stats
 from scipy.stats import norm
 
-from dist_fits import fit_dist
+from dist_fits import fit_dist, calculate_BIC
 from skew_norm import skew_norm
 
 def plot_hist_groups(df, group_by, plot_col,
-                    log=False, normalize=False, standardize=False,
+                    log=False, normalize=False, adjusted=False,
                     min_obs=20, tot_pop_col='ACSTOTPOP',
                     dist_names=[], skew_fit=False,
-                    bins=20, cols=3,
+                    bins=20, cols=3, top_adj=0.9,
                     fig_title=None, xlabel=None, ylabel='Probability',
                     area_unit=None):
     """ Plots (inline) histograms and normal distribution fit for:
@@ -26,7 +26,7 @@ def plot_hist_groups(df, group_by, plot_col,
         Optional Parameters:
             log (Boolean) : Take the log of data (Default = False)
             normialize (Boolean) : Subtract mean & divide stdev (Default = False)
-            standardize (Boolean) : Multiply by population proportion (Default = False)
+            adjusted (Boolean) : Multiply by population proportion (Default = False)
             min_obs (int) : Minimum number of observations for each group to include (Default = 20)
             tot_pop_col (str) : Used in standardization (Default = ACSTOTPOP)
             dist_names ([list]) : Distributions to fit (Default = False)
@@ -60,17 +60,14 @@ def plot_hist_groups(df, group_by, plot_col,
     if fig_title:
         # Add title and appropriate spacing
         fig.suptitle(fig_title, fontsize=24)
-        print height
-        plt.subplots_adjust(top=0.75) # TODO: adjust this based on size of plot
+        plt.subplots_adjust(top=top_adj) # TODO: adjust this based on size of plot
 
     for i, (name, group) in enumerate(grouped):
         #group = group[group[plot_col] > 0] #filter out 0's?
         data = group[plot_col].dropna()
         obs = len(data)
 
-        if standardize:
-            # TODO: Make sure this is the right calculation
-            # Should it be mean for group (City) or all data?
+        if adjusted:
             data = data * (group[tot_pop_col]/group[tot_pop_col].mean())
             data = data.dropna()
 
@@ -89,20 +86,18 @@ def plot_hist_groups(df, group_by, plot_col,
 
         for dist_name in dist_names:
             param, BIC = fit_dist(data, dist_name)
-
             dist = getattr(stats, dist_name)
             pdf_fitted = dist.pdf(x, *param[:-2], loc=param[-2], scale=param[-1])
             dist_label = dist_name + ' (BIC: %.0f)' % BIC
             axes[i].plot(x, pdf_fitted, linewidth=3, label=dist_label)
 
-        # TODO: Calculate BIC for this
         if skew_fit:
-            # Plot the PDF.
-            dist_label = 'Skew Normal'
+            dist_name = 'skew_norm'
             skew = stats.skew(data)
-            mu, std = data.mean(), data.std()
-            #pdf = skew_norm.pdf(x, skew, loc=mu, scale=std) # Create SkewNorm PDF
-            pdf = 2 * norm.pdf(x, loc=mu, scale=std) * norm.cdf(x * skew, loc=mu, scale=std)
+            mu, std = norm.fit(data)
+            pdf = skew_norm.pdf(x, skew, loc=mu, scale=std) # Create SkewNorm PDF
+            BIC = calculate_BIC(data, pdf, [skew,mu,std])
+            dist_label = dist_name + ' (BIC: %.0f)' % BIC
             axes[i].plot(x, pdf, linewidth=3, label=dist_label)
 
         # Add all the labels, title, & legend!
