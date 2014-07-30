@@ -16,7 +16,7 @@ class skew_norm_gen(rv_continuous):
 
         skew_norm.pdf(x, s) = 2 * norm.pdf(x) * norm.cdf(x * s)
     """
-    def _pdf(self, x, s):
-        return 2 * norm.pdf(x) * norm.cdf(x * s)
+    def _pdf(self, x, s, *args):
+        return 2 * norm.pdf(x, *args) * norm.cdf(x * s, *args)
 
-skew_norm = skew_norm_gen(name='skew_norm')
+skew_norm = skew_norm_gen(name='skew_norm', shapes='s')

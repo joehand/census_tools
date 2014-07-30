@@ -29,6 +29,7 @@ def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
         # Add sum of each column in sum_cols to city dict
         city.update({column: city_df[column].sum() for column in sum_cols})
 
+        #TODO This could be a vectorized calculation rather than for loop
         for column in analysis_cols:
             temp_df = city_df   # TODO city_df[city_df[column] > 0] (should we do this?)
             data = temp_df[column]
