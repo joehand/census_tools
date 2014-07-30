@@ -1,6 +1,8 @@
 
 from numpy import log
 from pandas import DataFrame
+import scipy.stats as stats
+
 
 def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
                     sum_cols = ['ACSHINC_TOTAL'], analysis_cols=[],
@@ -9,7 +11,6 @@ def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
         Sums columns or returns mean, var, std
 
     """
-
     cities = []
     for name, city_df in df.groupby(group_by):
         # Check if # of obs (block groups) is > min_obs

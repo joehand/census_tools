@@ -5,12 +5,13 @@ import numpy as np
 import scipy.stats as stats
 from scipy.stats import norm
 
+from dist_fits import fit_dist
 from skew_norm import skew_norm
 
 def plot_hist_groups(df, group_by, plot_col,
                     log=False, normalize=False, standardize=False,
                     min_obs=20, tot_pop_col='ACSTOTPOP',
-                    norm_fit=False, skew_fit=False,
+                    dist_names=[], skew_fit=False,
                     bins=20, cols=3,
                     fig_title=None, xlabel=None, ylabel='Probability',
                     area_unit=None):
@@ -28,7 +29,7 @@ def plot_hist_groups(df, group_by, plot_col,
             standardize (Boolean) : Multiply by population proportion (Default = False)
             min_obs (int) : Minimum number of observations for each group to include (Default = 20)
             tot_pop_col (str) : Used in standardization (Default = ACSTOTPOP)
-            norm_fit (Boolean) : Whether to include Norm fit (Default = False)
+            dist_names ([list]) : Distributions to fit (Default = False)
             skew_fit (Boolean) : Whether to include Skew fit (Default = False)
             bins (int) : Number of bins for Histograms (Default = 20)
             cols (int) : Number of Columns for figure (Default = 3)
@@ -59,13 +60,13 @@ def plot_hist_groups(df, group_by, plot_col,
     if fig_title:
         # Add title and appropriate spacing
         fig.suptitle(fig_title, fontsize=24)
-        plt.subplots_adjust(top=0.75)
+        print height
+        plt.subplots_adjust(top=0.75) # TODO: adjust this based on size of plot
 
     for i, (name, group) in enumerate(grouped):
         #group = group[group[plot_col] > 0] #filter out 0's?
         data = group[plot_col].dropna()
         obs = len(data)
-        fit_label = 'Normal Fit'
 
         if standardize:
             # TODO: Make sure this is the right calculation
@@ -75,7 +76,6 @@ def plot_hist_groups(df, group_by, plot_col,
 
         if log:
             data = np.log(data)
-            fit_label = 'Log-Normal Fit'
 
         if normalize:
             data = (data - data.mean())/data.std()
@@ -83,24 +83,27 @@ def plot_hist_groups(df, group_by, plot_col,
         # Histogram of the data
         axes[i].hist(data.values, bins, normed=True, histtype="stepfilled", alpha=0.6)
 
-        if norm_fit or skew_fit:
-            mu, std = data.mean(), data.std()
+        if len(dist_names) or skew_fit:
             xmin, xmax = data.min(), data.max()
             x = np.linspace(xmin, xmax, obs) # Create x vals
 
-        if norm_fit:
-            # Plot the PDF.
-            mu, std = norm.fit(data) # Fit a normal distribution to the data
-            pdf = norm.pdf(x, loc=mu, scale=std) # Create Norm PDF
-            axes[i].plot(x, pdf, linewidth=3, label=fit_label)
+        for dist_name in dist_names:
+            param, BIC = fit_dist(data, dist_name)
 
+            dist = getattr(stats, dist_name)
+            pdf_fitted = dist.pdf(x, *param[:-2], loc=param[-2], scale=param[-1])
+            dist_label = dist_name + ' (BIC: %.0f)' % BIC
+            axes[i].plot(x, pdf_fitted, linewidth=3, label=dist_label)
+
+        # TODO: Calculate BIC for this
         if skew_fit:
             # Plot the PDF.
-            fit_label = 'Skew ' + fit_label
+            dist_label = 'Skew Normal'
             skew = stats.skew(data)
+            mu, std = data.mean(), data.std()
             #pdf = skew_norm.pdf(x, skew, loc=mu, scale=std) # Create SkewNorm PDF
             pdf = 2 * norm.pdf(x, loc=mu, scale=std) * norm.cdf(x * skew, loc=mu, scale=std)
-            axes[i].plot(x, pdf, linewidth=3, label=fit_label)
+            axes[i].plot(x, pdf, linewidth=3, label=dist_label)
 
         # Add all the labels, title, & legend!
         if not area_unit:
@@ -111,4 +114,4 @@ def plot_hist_groups(df, group_by, plot_col,
         axes[i].set_xlabel(xlabel)
         axes[i].set_ylabel(ylabel)
         axes[i].set_title(title)
-        axes[i].legend(prop={'size':10},loc=2)
+        axes[i].legend(prop={'size':12},loc=2)

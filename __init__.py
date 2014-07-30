@@ -6,6 +6,7 @@ import pandas as pd
 from pandas import DataFrame, Series
 import seaborn as sns
 
+from dist_fits import create_bic_df
 from income_bins import calc_inc_weights, plot_inc_bins
 from plot_functions import plot_hist_groups
 from skew_norm import skew_norm
