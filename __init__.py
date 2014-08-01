@@ -19,3 +19,4 @@ from utils import group_by_city
 # Set graph styles to white and large
 sns.set_style("whitegrid")
 sns.set_context("talk")
+matplotlib.rc('text', usetex=True)

@@ -72,7 +72,7 @@ def _create_bic_df(df, group_by, analysis_col,
             mu, std = norm.fit(data)
             pdf = skew_norm.pdf(data, skew, loc=mu, scale=std)
             BIC = calculate_BIC(data, pdf, [skew, mu, std])
-            group_info['skewnorm_BIC'] = BIC #TODO: Check this is correct
+            #group_info['skewnorm_BIC'] = BIC TODO: Check this is correct
 
         group_bics.append(group_info)
 
@@ -85,22 +85,22 @@ def plot_bic_ranks(df, group_by, analysis_col, percentage=True, **kwargs):
     rank = bic_df.rank(axis=1).filter(regex='_BIC$')
 
     bic_cols = rank.filter(regex='_BIC$').columns
-    print bic_cols
-    print rank.info()
     rank_counts = {col:rank[col].value_counts() for col in bic_cols}
 
     rank_counts = DataFrame(rank_counts).transpose().fillna(value=0)
-    print rank_counts.columns
     rank_counts.columns = COL_NAMES[:len(rank_counts)]
     rank_counts = rank_counts.sort(columns=COL_NAMES[:len(rank_counts)],ascending=False)
 
     if percentage:
         rank_counts = (rank_counts/rank_counts.sum()) * 100
+        ylabel='Percentage'
+    else:
+        ylabel='Count'
 
-    ax = rank_counts.plot(kind='bar', title='Distribution BIC Ranks')
-    ax.set_ylabel('Percentage')
+    ax = rank_counts['First'].plot(kind='bar', title='Distribution BIC First Place', rot=-30)
+    ax.set_ylabel(ylabel)
     plt.show()
-    ax = rank_counts['First'].plot(kind='bar', title='Distribution BIC First Place')
-    ax.set_ylabel('Percentage')
+    ax = rank_counts.plot(kind='bar', title='Distribution BIC Ranks', rot=-30)
+    ax.set_ylabel(ylabel)
 
     return rank_counts

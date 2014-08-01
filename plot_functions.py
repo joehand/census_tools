@@ -10,14 +10,14 @@ from skew_norm import skew_norm
 from utils import ols_reg
 
 def plot_single_hist(data, ax=None,
-                    log=False, normalize=False,
+                    logx=False, normalize=False,
                     dist_names=[], skew_fit=False,
-                    bins=20,
+                    bins=20, print_bic=True,
                     title=None, xlabel=None, ylabel='Probability'):
     data = data.dropna()
     obs = len(data)
 
-    if log:
+    if logx:
         data = np.log(data[data > 0])
 
     if normalize:
@@ -38,7 +38,9 @@ def plot_single_hist(data, ax=None,
         param, BIC = fit_dist(data, dist_name)
         dist = getattr(stats, dist_name)
         pdf_fitted = dist.pdf(x, *param[:-2], loc=param[-2], scale=param[-1])
-        dist_label = dist_name + ' (BIC: %.0f)' % BIC
+        dist_label = dist_name
+        if print_bic and len(dist_names)>1:
+            dist_label += ' (BIC: %.0f)' % BIC
         ax.plot(x, pdf_fitted, linewidth=3, label=dist_label)
 
     if skew_fit:
@@ -62,7 +64,7 @@ def plot_single_hist(data, ax=None,
     return ax
 
 def plot_hist_groups(df, group_by, plot_col,
-                    log=False, normalize=False, adjusted=False,
+                    logx=False, normalize=False, adjusted=False,
                     min_obs=20, tot_pop_col='ACSTOTPOP',
                     dist_names=[], skew_fit=False,
                     bins=20, cols=3, top_adj=0.9,
@@ -132,7 +134,7 @@ def plot_hist_groups(df, group_by, plot_col,
         title = name.split('-')[0] + ' (%s: %s)' % (area_unit, str(obs))
 
         axes[i] = plot_single_hist(data, ax=axes[i],
-                            log=log, normalize=normalize,
+                            logx=logx, normalize=normalize,
                             dist_names=dist_names, skew_fit=skew_fit,
                             bins=bins,
                             title=title, xlabel=xlabel, ylabel=ylabel)

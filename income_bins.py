@@ -8,6 +8,7 @@ import seaborn as sns
 from statsmodels import api as sm
 
 from plot_functions import plot_single_hist, plot_ols
+from utils import group_by_city
 
 
 def _get_values(cols):
@@ -87,9 +88,9 @@ def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True, logy=False,
 
     if not xlabel:
         if logx:
-            xlabel = 'Log of Income Bin Value (Log $)'
+            xlabel = 'Log of Income Bin Value (Log \$)'
         else:
-            xlabel = 'Income Bin Value ($)'
+            xlabel = 'Income Bin Value (\$)'
 
     if not ylabel:
         ylabel = 'Count of Households in Bin'
@@ -106,19 +107,30 @@ def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True, logy=False,
     return df
 
 
-def plot_incw_hist(df, filter='_WEIGHT$',
-                    log=True, normalize=False,
-                    dist_names=[], skew_fit=False,
-                    bins = 50,
-                    title=None, xlabel=None, ylabel=None):
+def plot_incw_hist(df, filter='_WEIGHT$', kind='all', **kwargs):
     """ Return histogram of all columns in filter combined
     """
     cols = df.filter(regex=filter).columns
-    data = Series().append([df[col] for col in cols])
-    return plot_single_hist(data, log=log, normalize=normalize,
-                        dist_names=dist_names, skew_fit=skew_fit,
-                        bins=bins,
-                        title=title, xlabel=xlabel, ylabel=ylabel)
+    if kind == 'all':
+        data = Series().append([df[col] for col in cols])
+    elif kind == 'bkgp':
+        # sum across all l, should end up with j values
+        data = df.filter(regex=filter).mean(axis=1)
+    elif kind == 'income':
+        # sum across all j for a city, should end up with l * # cities values
+        # - group by City
+        # - mean of income level weights
+        # Group Data By City, calculate mean/var/stdev for 'analysis cols', add other cols
+        city_df = group_by_city(df, log_analysis=False,
+                                    analysis_cols = cols, **kwargs)
+        data = Series().append([city_df[col] for col in city_df.filter(regex='_mean$')])
+    elif kind == 'city':
+        #same as income. then sum across all income means
+        city_df = group_by_city(df, log_analysis=False,
+                                    analysis_cols = cols, **kwargs)
+        data = city_df.filter(regex='_mean$').mean(axis=1)
+
+    return plot_single_hist(data, **kwargs)
 
 
 def plot_incw_beans(df, filter='_WEIGHT$',
@@ -136,7 +148,6 @@ def plot_incw_beans(df, filter='_WEIGHT$',
 def plot_incw_pop(df, filter='_WEIGHT$', pop_col='ACSTOTPOP',
                       y_col_name = 'WEIGHT_SUM', **kwargs):
     temp_df = df
-
     temp_df[y_col_name] = temp_df.filter(regex=filter).mean(axis=1)
 
     return plot_ols(temp_df, pop_col, y_col_name, **kwargs)

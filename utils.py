@@ -12,8 +12,8 @@ def ols_reg(x, y, print_results=False):
     return results
 
 def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
-                    sum_cols = ['ACSHINC_TOTAL'], analysis_cols=[],
-                    min_obs=20, obs_name='BKGP', log_analysis=False):
+                    sum_cols = [], analysis_cols=[],
+                    min_obs=20, obs_name='BKGP', log_analysis=False, **kwargs):
     """ Returns dataframe with each row a city.
         Sums columns or returns mean, var, std
 
@@ -37,6 +37,7 @@ def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
         # Add sum of each column in sum_cols to city dict
         city.update({column: city_df[column].sum() for column in sum_cols})
 
+        final_analysis_cols = []
         #TODO This could be a vectorized calculation rather than for loop
         for column in analysis_cols:
             temp_df = city_df   # TODO city_df[city_df[column] > 0] (should we do this?)
@@ -53,8 +54,8 @@ def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
                     column + '_stdev': data.std()
                 })
 
-            final_analysis_cols = [column + '_mean',
-                    column + '_variance',column + '_stdev']
+            final_analysis_cols.extend([column + '_mean',
+                    column + '_variance',column + '_stdev'])
 
             """
             TODO: check this.
@@ -75,7 +76,6 @@ def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
                     'sum_weight' : weight,
                 })
             """
-
         cities.append(city)
 
     col_lists = [[group_by, population_col, obs_name + '_COUNT'],
