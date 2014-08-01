@@ -2,7 +2,14 @@
 from numpy import log
 from pandas import DataFrame
 import scipy.stats as stats
+from statsmodels import api as sm
 
+def ols_reg(x, y, print_results=False):
+    X = sm.add_constant(x, prepend=True) #Add a column of ones to allow the calculation of the intercept
+    results = sm.OLS(y, X).fit()
+    if print_results:
+        print results.summary()
+    return results
 
 def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
                     sum_cols = ['ACSHINC_TOTAL'], analysis_cols=[],

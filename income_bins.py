@@ -3,7 +3,11 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import log
+from pandas import Series
 import seaborn as sns
+from statsmodels import api as sm
+
+from plot_functions import plot_single_hist, plot_ols
 
 
 def _get_values(cols):
@@ -39,7 +43,7 @@ def calc_inc_weights(df, group_by='CITY_NAME', weight_filter='^ACSHINC([0-9])+$'
     return df.replace([np.inf, -np.inf], np.nan).dropna(how="all") #drop inf created from above division
 
 
-def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True,
+def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True, logy=False,
                 index=None, scatter=False, legend=True,
                 title=None, xlabel=None, ylabel=None):
     """ Plots income bins for specified selector
@@ -61,15 +65,22 @@ def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True,
         else:
             x = _get_values(cols)
 
+        if logy:
+            data = df[col]
+            data = np.log(data)
+            data = data.dropna()
+        else:
+            data = df[col]
+
         if index == 'CITY_NAME':
             label = col.split('-')[0]
         else:
             label = col
 
         if scatter:
-            plt.scatter(x, df[col], c=color, label=str(label), s=48)
+            plt.scatter(x, data, c=color, label=str(label), s=48)
         else:
-            plt.plot(x, df[col], c=color, label=str(label))
+            plt.plot(x, data, c=color, label=str(label))
 
     if not logx:
         plt.xlim(-1, 201)
@@ -93,3 +104,39 @@ def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True,
         plt.legend()
 
     return df
+
+
+def plot_incw_hist(df, filter='_WEIGHT$',
+                    log=True, normalize=False,
+                    dist_names=[], skew_fit=False,
+                    bins = 50,
+                    title=None, xlabel=None, ylabel=None):
+    """ Return histogram of all columns in filter combined
+    """
+    cols = df.filter(regex=filter).columns
+    data = Series().append([df[col] for col in cols])
+    return plot_single_hist(data, log=log, normalize=normalize,
+                        dist_names=dist_names, skew_fit=skew_fit,
+                        bins=bins,
+                        title=title, xlabel=xlabel, ylabel=ylabel)
+
+
+def plot_incw_beans(df, filter='_WEIGHT$',
+                        logy=True, plot_opts={}):
+    # TODO: Make this color nicer. Should use seaborn colors.
+
+    cols = df.filter(regex=filter).columns.values
+    labels = [int(re.findall('\d+', col)[0]) for col in cols]
+    if logy:
+        data = [np.log(df[df[col] > 0][col]).dropna() for col in cols]
+    else:
+        data = [df[df[col] > 0][col].dropna() for col in cols]
+    return sm.graphics.beanplot(data, labels=labels, plot_opts=plot_opts)
+
+def plot_incw_pop(df, filter='_WEIGHT$', pop_col='ACSTOTPOP',
+                      y_col_name = 'WEIGHT_SUM', **kwargs):
+    temp_df = df
+
+    temp_df[y_col_name] = temp_df.filter(regex=filter).mean(axis=1)
+
+    return plot_ols(temp_df, pop_col, y_col_name, **kwargs)

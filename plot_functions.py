@@ -7,6 +7,59 @@ from scipy.stats import norm
 
 from dist_fits import fit_dist, calculate_BIC
 from skew_norm import skew_norm
+from utils import ols_reg
+
+def plot_single_hist(data, ax=None,
+                    log=False, normalize=False,
+                    dist_names=[], skew_fit=False,
+                    bins=20,
+                    title=None, xlabel=None, ylabel='Probability'):
+    data = data.dropna()
+    obs = len(data)
+
+    if log:
+        data = np.log(data[data > 0])
+
+    if normalize:
+        data = (data - data.mean())/data.std()
+
+    if ax is None:
+        ax = plt.gca()
+
+    # Histogram of the data
+    # TODO: Add cumulative option, cumulative = True; need to do it for dist_fits too
+    ax.hist(data.values, bins, normed=True, histtype="stepfilled", alpha=0.6)
+
+    if len(dist_names) or skew_fit:
+        xmin, xmax = data.min(), data.max()
+        x = np.linspace(xmin, xmax, obs) # Create x vals
+
+    for dist_name in dist_names:
+        param, BIC = fit_dist(data, dist_name)
+        dist = getattr(stats, dist_name)
+        pdf_fitted = dist.pdf(x, *param[:-2], loc=param[-2], scale=param[-1])
+        dist_label = dist_name + ' (BIC: %.0f)' % BIC
+        ax.plot(x, pdf_fitted, linewidth=3, label=dist_label)
+
+    if skew_fit:
+        dist_name = 'skew_norm'
+        skew = stats.skew(data)
+        mu, std = norm.fit(data)
+        pdf = skew_norm.pdf(x, skew, loc=mu, scale=std) # Create SkewNorm PDF
+        BIC = calculate_BIC(data, pdf, [skew,mu,std])
+        dist_label = dist_name + ' (BIC: %.0f)' % BIC
+        ax.plot(x, pdf, linewidth=3, label=dist_label)
+
+    # Add all the labels, title, & legend!
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    ax.legend(prop={'size':12},loc=2)
+
+    return ax
 
 def plot_hist_groups(df, group_by, plot_col,
                     log=False, normalize=False, adjusted=False,
@@ -71,42 +124,64 @@ def plot_hist_groups(df, group_by, plot_col,
             data = data * (group[tot_pop_col]/group[tot_pop_col].mean())
             data = data.dropna()
 
-        if log:
-            data = np.log(data)
-
-        if normalize:
-            data = (data - data.mean())/data.std()
-
-        # Histogram of the data
-        axes[i].hist(data.values, bins, normed=True, histtype="stepfilled", alpha=0.6)
-
-        if len(dist_names) or skew_fit:
-            xmin, xmax = data.min(), data.max()
-            x = np.linspace(xmin, xmax, obs) # Create x vals
-
-        for dist_name in dist_names:
-            param, BIC = fit_dist(data, dist_name)
-            dist = getattr(stats, dist_name)
-            pdf_fitted = dist.pdf(x, *param[:-2], loc=param[-2], scale=param[-1])
-            dist_label = dist_name + ' (BIC: %.0f)' % BIC
-            axes[i].plot(x, pdf_fitted, linewidth=3, label=dist_label)
-
-        if skew_fit:
-            dist_name = 'skew_norm'
-            skew = stats.skew(data)
-            mu, std = norm.fit(data)
-            pdf = skew_norm.pdf(x, skew, loc=mu, scale=std) # Create SkewNorm PDF
-            BIC = calculate_BIC(data, pdf, [skew,mu,std])
-            dist_label = dist_name + ' (BIC: %.0f)' % BIC
-            axes[i].plot(x, pdf, linewidth=3, label=dist_label)
-
         # Add all the labels, title, & legend!
         if not area_unit:
             area_unit = 'Obs.'
         if not xlabel:
             xlabel = plot_col
         title = name.split('-')[0] + ' (%s: %s)' % (area_unit, str(obs))
-        axes[i].set_xlabel(xlabel)
-        axes[i].set_ylabel(ylabel)
-        axes[i].set_title(title)
-        axes[i].legend(prop={'size':12},loc=2)
+
+        axes[i] = plot_single_hist(data, ax=axes[i],
+                            log=log, normalize=normalize,
+                            dist_names=dist_names, skew_fit=skew_fit,
+                            bins=bins,
+                            title=title, xlabel=xlabel, ylabel=ylabel)
+
+    return fig
+
+
+def plot_ols(df, x_col, y_col, logx=True, logy=False,
+                    run_reg=True, print_reg=False,
+                    title=None, xlabel=None, ylabel=None):
+    """ Print out OLS regression and graph for a variable
+
+        Returns regression results
+    """
+    df = df[df[x_col].notnull() & df[y_col].notnull()]
+
+    if logx:
+        x = np.log(df[x_col]).dropna()
+    else:
+        x = df[x_col]
+    if logy:
+        y = np.log(df[y_col]).dropna()
+    else:
+        y = df[y_col]
+
+    if run_reg:
+        results = ols_reg(x, y, print_results=print_reg)
+        intercept, slope = results.params
+        line = intercept + slope * x
+
+    # Create the plots
+    plt.plot(x, y, 'o', label="Data")
+    if run_reg:
+        plt.plot(x, line, '-', lw = 2, label="OLS Reg")
+
+    if not xlabel:
+        if logx:
+            xlabel = 'log_' + x_col
+        else:
+            xlabel = x_col
+    if not ylabel:
+        if logy:
+            ylabel = 'log_' + y_col
+        else:
+            ylabel = y_col
+    if title:
+        plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.show()
+
+    return results
