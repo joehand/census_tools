@@ -44,7 +44,7 @@ def plot_single_hist(data, ax=None,
         ax.plot(x, pdf_fitted, linewidth=3, label=dist_label)
 
     if skew_fit:
-        dist_name = 'skew_norm'
+        dist_name = 'skewnorm'
         skew = stats.skew(data)
         mu, std = norm.fit(data)
         pdf = skew_norm.pdf(x, skew, loc=mu, scale=std) # Create SkewNorm PDF
@@ -123,7 +123,8 @@ def plot_hist_groups(df, group_by, plot_col,
         obs = len(data)
 
         if adjusted:
-            data = data * (group[tot_pop_col]/group[tot_pop_col].mean())
+            mean = group[tot_pop_col].mean()
+            data = data * (group[tot_pop_col]/mean)
             data = data.dropna()
 
         # Add all the labels, title, & legend!

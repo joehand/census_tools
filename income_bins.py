@@ -10,6 +10,7 @@ from statsmodels import api as sm
 from plot_functions import plot_single_hist, plot_ols
 from utils import group_by_city
 
+# TODO: Speed things up! Read this: http://programmers.stackexchange.com/questions/228127/is-python-suitable-for-a-statistical-modeling-application-looking-over-thousands?rq=1
 
 def _get_values(cols):
     """ Returns array of int values based on str column names
@@ -37,11 +38,13 @@ def calc_inc_weights(df, group_by='CITY_NAME', weight_filter='^ACSHINC([0-9])+$'
     if not len(df.filter(regex='_CITY').columns) > 0:
         df = _join_sum_cols(df, group_by=group_by, rsuffix=city_rsuffix, filter=sum_filter)
     cols = df.filter(regex=weight_filter).columns.values
+    total_col = df[total_count_col]
+    city_tot = df[total_count_col + city_rsuffix]
     for col in cols:
-        df[col + weight_rsuffix] = (
-                df[col]/df[total_count_col])/(
-                df[col + city_rsuffix]/df[total_count_col + city_rsuffix])
-    return df.replace([np.inf, -np.inf], np.nan).dropna(how="all") #drop inf created from above division
+        data_col = df[col]
+        city_col = df[col + city_rsuffix]
+        df[col + weight_rsuffix] = (data_col/total_col)/(city_col/city_tot)
+    return df.replace([np.inf, -np.inf], np.nan) #drop inf created from above division
 
 
 def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True, logy=False,
@@ -67,11 +70,9 @@ def plot_inc_bins(df, filter='^ACSHINC([0-9])+$', logx=True, logy=False,
             x = _get_values(cols)
 
         if logy:
-            data = df[col]
-            data = np.log(data)
-            data = data.dropna()
+            data = np.log(df[col].values).dropna()
         else:
-            data = df[col]
+            data = df[col].values
 
         if index == 'CITY_NAME':
             label = col.split('-')[0]

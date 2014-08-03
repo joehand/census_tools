@@ -65,7 +65,7 @@ def _create_bic_df(df, group_by, analysis_col,
 
         for dist_name in dist_names:
             param, BIC = fit_dist(data, dist_name)
-            group_info[analysis_col + '_' + dist_name + '_BIC'] = BIC
+            group_info[dist_name + '\_BIC'] = BIC
 
         if skew_fit:
             skew = stats.skew(data)
