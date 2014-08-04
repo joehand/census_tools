@@ -1,5 +1,5 @@
 
-from numpy import log
+import numpy as np
 from pandas import DataFrame, Series
 import scipy.stats as stats
 from statsmodels import api as sm
@@ -11,8 +11,9 @@ def ols_reg(x, y, print_results=False):
         print results.summary()
     return results
 
-def _create_analysis_cols(df, analysis_cols, log_analysis):
-    """
+def _create_analysis_cols(df, analysis_cols, log_analysis,
+                                adjust=False, city_pop=None, population_col=None):
+    """ Returns dict of analysis col mean, var, std. And list of new col names.
 
     """
     final_analysis_cols = []
@@ -22,8 +23,22 @@ def _create_analysis_cols(df, analysis_cols, log_analysis):
         temp_df = df   # TODO city_df[city_df[column] > 0] (should we do this?)
         data = temp_df[column].values
 
+        if adjust:
+            # Adjust each BKGP by N_j/N
+            weighted_col = temp_df[column] * (temp_df[population_col] / city_pop)
+            if log_analysis:
+                adj_col = 'log(' + column + ')'
+                adj_mean = np.log(weighted_col.sum())
+            else:
+                adj_col = column
+                adj_mean = weighted_col.sum()
+            analysis_data.update({
+                    adj_col + '_adjmean' : adj_mean,
+                })
+            final_analysis_cols.extend([adj_col + '_adjmean'])
+
         if log_analysis:
-            data = log(data)
+            data = np.log(data)
             column = 'log(' + column + ')'
 
         # Add columns for mean, variance, and stdev
@@ -33,6 +48,9 @@ def _create_analysis_cols(df, analysis_cols, log_analysis):
                 column + '_stdev': data.std()
             })
 
+        if data.mean() == 'NaN':
+            print df
+
         final_analysis_cols.extend([column + '_mean',
                 column + '_variance',column + '_stdev'])
 
@@ -40,8 +58,8 @@ def _create_analysis_cols(df, analysis_cols, log_analysis):
 
 
 def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
-                    sum_cols = [], analysis_cols=[],
-                    min_obs=20, obs_name='BKGP', log_analysis=False, **kwargs):
+                    sum_cols = [], analysis_cols=[], adjust=False,
+                    min_obs=20, obs_name='BKGP', log_analysis=False):
     """ Returns dataframe with each row a city.
 
         Sums columns or returns mean, var, std
@@ -66,7 +84,10 @@ def group_by_city(df, group_by='CITY_NAME', population_col='ACSTOTPOP',
         # Add sum of each column in sum_cols to city dict
         city.update({column: city_df[column].values.sum() for column in sum_cols})
 
-        analysis_data, final_analysis_cols = _create_analysis_cols(city_df, analysis_cols, log_analysis)
+        analysis_data, final_analysis_cols = _create_analysis_cols(city_df,
+                                        analysis_cols, log_analysis,
+                                        adjust=adjust, city_pop=city_pop,
+                                        population_col=population_col)
         city.update(analysis_data)
         cities.append(city)
 

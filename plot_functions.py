@@ -2,6 +2,7 @@ from __future__ import division
 
 import matplotlib.pyplot as plt
 import numpy as np
+from pandas import DataFrame, Series
 import scipy.stats as stats
 from scipy.stats import norm
 
@@ -63,7 +64,7 @@ def plot_single_hist(data, ax=None,
 
     return ax
 
-def plot_hist_groups(df, group_by, plot_col,
+def plot_hist_groups(df, group_by, plot_col, plot=True,
                     logx=False, normalize=False, adjusted=False,
                     min_obs=20, tot_pop_col='ACSTOTPOP',
                     dist_names=[], skew_fit=False,
@@ -72,6 +73,7 @@ def plot_hist_groups(df, group_by, plot_col,
                     area_unit=None):
     """ Plots (inline) histograms and normal distribution fit for:
             log(variable) by a specific group/column
+        Returns new dataframe by groups.
 
         Parameters:
             df (Pandas DataFrame) : Dataframe input
@@ -107,16 +109,19 @@ def plot_hist_groups(df, group_by, plot_col,
         rows = 1
     height = rows * 3
 
-    # Create figure and subplots
-    fig, axes = plt.subplots(rows, cols, figsize=(20,height))
-    fig.tight_layout(pad=1.5, w_pad=2.5, h_pad=5.5)
-    axes = axes.ravel()
 
-    if fig_title:
+    if plot:
+        # Create figure and subplots
+        fig, axes = plt.subplots(rows, cols, figsize=(20,height))
+        fig.tight_layout(pad=1.5, w_pad=2.5, h_pad=5.5)
+        axes = axes.ravel()
+
+    if fig_title and plot:
         # Add title and appropriate spacing
         fig.suptitle(fig_title, fontsize=24)
         plt.subplots_adjust(top=top_adj) # TODO: adjust this based on size of plot
 
+    city_df = []
     for i, (name, group) in enumerate(grouped):
         #group = group[group[plot_col] > 0] #filter out 0's?
         data = group[plot_col].dropna()
@@ -134,13 +139,31 @@ def plot_hist_groups(df, group_by, plot_col,
             xlabel = plot_col
         title = name.split('-')[0] + ' (%s: %s)' % (area_unit, str(obs))
 
-        axes[i] = plot_single_hist(data, ax=axes[i],
+        # TODO: This is ugly, i should do calculation somewhere else rather than this if plot thing.
+        if plot:
+            axes[i] = plot_single_hist(data, ax=axes[i],
                             logx=logx, normalize=normalize,
                             dist_names=dist_names, skew_fit=skew_fit,
                             bins=bins,
                             title=title, xlabel=xlabel, ylabel=ylabel)
 
-    return fig
+
+        city_mean = data.mean()
+        city_var = data.var()
+
+        if logx:
+            city_mean = np.log(city_mean)
+            city_var = np.log(city_mean)
+
+        city_df.append([name, city_mean, city_var])
+    col_mean_name = plot_col + '_CITYMEAN'
+    col_var_name = plot_col + '_CITYVAR'
+    if adjusted:
+        col_mean_name += '_ADJ'
+    if logx:
+        col_mean_name = 'log(%s)'%col_mean_name
+        col_var_name = 'log(%s)'%col_var_name
+    return DataFrame(city_df, columns=['CITY_NAME', col_mean_name, col_var_name])
 
 
 def plot_ols(df, x_col, y_col, logx=True, logy=False,
@@ -173,12 +196,12 @@ def plot_ols(df, x_col, y_col, logx=True, logy=False,
 
     if not xlabel:
         if logx:
-            xlabel = 'log_' + x_col
+            xlabel = 'log(%s)' % x_col
         else:
             xlabel = x_col
     if not ylabel:
         if logy:
-            ylabel = 'log_' + y_col
+            ylabel = 'log(%s)'% y_col
         else:
             ylabel = y_col
     if title:
