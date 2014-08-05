@@ -11,8 +11,9 @@ import seaborn as sns
 from dist_fits import plot_bic_ranks
 from income_bins import (calc_inc_weights, plot_inc_bins,
                     plot_incw_hist, plot_incw_beans, plot_incw_pop)
-from plot_functions import plot_hist_groups, plot_ols
+from plot_functions import plot_hist_groups, plot_single_hist,plot_ols
 from skew_norm import skew_norm
+from skew_normal import random_skewnormal, skewnormal_parms, pdf_skewnormal
 #from us_census import *
 from utils import group_by_city
 

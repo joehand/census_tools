@@ -8,6 +8,7 @@ from scipy.stats import norm
 
 from dist_fits import fit_dist, calculate_BIC
 from skew_norm import skew_norm
+from skew_normal import pdf_skewnormal, skewnormal_parms
 from utils import ols_reg
 
 def plot_single_hist(data, ax=None,
@@ -47,10 +48,15 @@ def plot_single_hist(data, ax=None,
     if skew_fit:
         dist_name = 'skewnorm'
         skew = stats.skew(data)
-        mu, std = norm.fit(data)
-        pdf = skew_norm.pdf(x, skew, loc=mu, scale=std) # Create SkewNorm PDF
-        BIC = calculate_BIC(data, pdf, [skew,mu,std])
-        dist_label = dist_name + ' (BIC: %.0f)' % BIC
+        mu, std = data.mean(), data.std()
+        loc, scale, shape = skewnormal_parms(mean=mu, stdev=std, skew=skew)
+        #pdf = 2 * norm.pdf(x, loc=mu, scale=std) * norm.cdf(x * skew, loc=mu, scale=std)
+        #pdf = skew_norm.pdf(x, skew, loc=mu, scale=std) # Create SkewNorm PDF
+        pdf = pdf_skewnormal(x, location=loc, scale=scale, shape=shape)
+        BIC = calculate_BIC(data, pdf, [shape,mu,std])
+        dist_label = dist_name
+        if print_bic and len(dist_names)>1:
+            dist_label += ' (BIC: %.0f)' % BIC
         ax.plot(x, pdf, linewidth=3, label=dist_label)
 
     # Add all the labels, title, & legend!
@@ -148,22 +154,24 @@ def plot_hist_groups(df, group_by, plot_col, plot=True,
                             title=title, xlabel=xlabel, ylabel=ylabel)
 
 
+        if logx:
+            data = np.log(data)
         city_mean = data.mean()
         city_var = data.var()
+        city_std = data.std()
+        city_df.append([name, city_mean, city_var, city_std])
 
-        if logx:
-            city_mean = np.log(city_mean)
-            city_var = np.log(city_mean)
-
-        city_df.append([name, city_mean, city_var])
-    col_mean_name = plot_col + '_CITYMEAN'
-    col_var_name = plot_col + '_CITYVAR'
-    if adjusted:
-        col_mean_name += '_ADJ'
     if logx:
-        col_mean_name = 'log(%s)'%col_mean_name
-        col_var_name = 'log(%s)'%col_var_name
-    return DataFrame(city_df, columns=['CITY_NAME', col_mean_name, col_var_name])
+        col_name = 'log(%s)'%plot_col
+    if adjusted:
+        col_mean_name = col_name + '_dist_adjmean'
+        col_var_name = col_name + '_dist_adjvar'
+        col_std_name = col_name + '_dist_adjstd'
+    else:
+        col_mean_name = col_name + '_dist_mean'
+        col_var_name = col_name + '_dist_var'
+        col_std_name = col_name + '_dist_std'
+    return DataFrame(city_df, columns=['CITY_NAME', col_mean_name, col_var_name, col_std_name])
 
 
 def plot_ols(df, x_col, y_col, logx=True, logy=False,
@@ -185,7 +193,7 @@ def plot_ols(df, x_col, y_col, logx=True, logy=False,
         y = df[y_col]
 
     if run_reg:
-        results = ols_reg(x, y, print_results=print_reg)
+        results = ols_reg(x, y)
         intercept, slope = results.params
         line = intercept + slope * x
 
@@ -209,5 +217,9 @@ def plot_ols(df, x_col, y_col, logx=True, logy=False,
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.show()
+
+    if print_reg:
+        print results.summary()
+        print '\n' + 120 * '-' + 2 * '\n'
 
     return results
