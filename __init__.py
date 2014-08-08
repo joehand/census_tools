@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
 import seaborn as sns
+import scipy.stats as stats
+import scipy.special as sspec
 
 from dist_fits import plot_bic_ranks
 from income_bins import (calc_inc_weights, plot_inc_bins,
@@ -14,12 +16,12 @@ from income_bins import (calc_inc_weights, plot_inc_bins,
 from plot_functions import plot_hist_groups, plot_single_hist,plot_ols
 from skew_norm import skew_norm
 from skew_normal import random_skewnormal, skewnormal_parms, pdf_skewnormal
-#from us_census import *
 from utils import group_by_city
 
-#TODO: be able to set defaults like, population_col, city_col_name, etc.
+# TODO: be able to set defaults like, population_col, city_col_name, etc.
 #      this will need a class I think.
 #      so make a class for app of this stuff. give it the api based on the imports above
+# TODO: Could also save data using a class (e.g. groupby data)
 
 # Set graph styles to white and large
 sns.set_style("whitegrid")

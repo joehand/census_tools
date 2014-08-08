@@ -42,6 +42,7 @@ def _create_analysis_cols(df, analysis_cols, log_analysis,
             column = 'log(' + column + ')'
 
         # Add columns for mean, variance, and stdev
+        # TODO: Change to this: http://pandas.pydata.org/pandas-docs/stable/groupby.html#applying-different-functions-to-dataframe-columns
         analysis_data.update({
                 column + '_mean' : data.mean(),
                 column + '_variance': data.var(),

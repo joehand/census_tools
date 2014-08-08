@@ -69,10 +69,11 @@ def _create_bic_df(df, group_by, analysis_col,
 
         if skew_fit:
             skew = stats.skew(data)
-            mu, std = norm.fit(data)
-            pdf = skew_norm.pdf(data, skew, loc=mu, scale=std)
+            mu, std = data.mean(), data.std()
+            loc, scale, shape = skewnormal_parms(mean=mu, stdev=std, skew=skew)
+            pdf = pdf_skewnormal(x, location=loc, scale=scale, shape=shape)
             BIC = calculate_BIC(data, pdf, [skew, mu, std])
-            #group_info['skewnorm_BIC'] = BIC TODO: Check this is correct
+            group_info['skewnorm_BIC'] = BIC
 
         group_bics.append(group_info)
 

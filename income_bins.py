@@ -43,7 +43,7 @@ def calc_inc_weights(df, group_by='CITY_NAME', weight_filter='^ACSHINC([0-9])+$'
     for col in cols:
         data_col = df[col]
         city_col = df[col + city_rsuffix]
-        df[col + weight_rsuffix] = (data_col/total_col)/(city_col/city_tot)
+        df[col + weight_rsuffix] = (data_col/(total_col*city_col)) * city_tot #(data_col/total_col)/(city_col/city_tot)
     return df.replace([np.inf, -np.inf], np.nan) #drop inf created from above division
 
 
@@ -116,15 +116,27 @@ def plot_incw_hist(df, filter='_WEIGHT$', kind='all', **kwargs):
         data = Series().append([df[col] for col in cols])
     elif kind == 'bkgp':
         # sum across all l, should end up with j values
-        data = df.filter(regex=filter).mean(axis=1)
+        cols = df.filter(regex='^ACSHINC([0-9])+$').columns
+        for col in cols:
+            df[col + '_WEIGHT_J'] = df[col] * df[col + '_wlnw']
+
+        filter = '_WEIGHT_J$'
+        data = (df.filter(regex=filter).sum(axis=1)) * (1/df['ACSHINC_COUNT_CITY'])
+        #data = df.filter(regex=filter).apply(lambda x: np.log(x)).mean(axis=1)
+        #data = (1/df['ACSHINC_COUNT_CITY']) * (df.filter(regex='_WEIGHT$').apply(lambda x: np.log(x)).sum(axis=1))
     elif kind == 'income':
         # sum across all j for a city, should end up with l * # cities values
         # - group by City
         # - mean of income level weights
         # Group Data By City, calculate mean/var/stdev for 'analysis cols', add other cols
-        city_df = group_by_city(df, log_analysis=False,
-                                    analysis_cols = cols, **kwargs)
-        data = Series().append([city_df[col] for col in city_df.filter(regex='_mean$')])
+        temp_cols = df.filter(regex='^ACSHINC([0-9])+$').columns
+        for col in temp_cols:
+            df[col + '_WEIGHT_L'] = df['ACSHINC_COUNT'] * df[col + '_WEIGHT'] * np.log2(df[col + '_WEIGHT'])
+        weight_filter = '_WEIGHT_L$|^ACSHINC([0-9])+$|^ACSHINC_COUNT$'
+        cols = df.filter(regex=weight_filter).columns.values
+        city_df = df.groupby(by='CITY_NAME')[cols].sum()
+        city_df[city_df.filter(regex='_WEIGHT_L$').columns] = city_df[city_df.filter(regex='_WEIGHT_L$').columns].apply(lambda x: x / city_df.ix[x.name]['ACSHINC_COUNT'], axis=1)
+        data = Series().append([city_df[col] for col in city_df.filter(regex='_WEIGHT_L$')])
     elif kind == 'city':
         #same as income. then sum across all income means
         city_df = group_by_city(df, log_analysis=False,
