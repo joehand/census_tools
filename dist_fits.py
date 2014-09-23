@@ -6,7 +6,7 @@ from pandas import DataFrame
 import scipy.stats as stats
 from scipy.stats import norm
 
-from skew_norm import skew_norm
+from .skew_norm import skew_norm
 
 def calculate_BIC(data, pdf, param):
     NLL = -sum(log(pdf))

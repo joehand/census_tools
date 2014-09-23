@@ -6,15 +6,15 @@ from pandas import DataFrame, Series
 import scipy.stats as stats
 from scipy.stats import norm
 
-from dist_fits import fit_dist, calculate_BIC
-from skew_norm import skew_norm
-from skew_normal import pdf_skewnormal, skewnormal_parms
-from utils import ols_reg
+from .dist_fits import fit_dist, calculate_BIC
+from .skew_norm import skew_norm
+from .skew_normal import pdf_skewnormal, skewnormal_parms
+from .utils import ols_reg
 
 def plot_single_hist(data, ax=None,
                     logx=False, normalize=False,
                     dist_names=[], skew_fit=False,
-                    bins=20, print_bic=True,
+                    bins=20, print_bic=True, xlim=None,
                     title=None, xlabel=None, ylabel='Probability'):
     data = data.dropna()
     obs = len(data)
@@ -30,7 +30,7 @@ def plot_single_hist(data, ax=None,
 
     # Histogram of the data
     # TODO: Add cumulative option, cumulative = True; need to do it for dist_fits too
-    ax.hist(data.values, bins, normed=True, histtype="stepfilled", alpha=0.6)
+    ax.hist(data.values, bins, normed=True, histtype="stepfilled", alpha=0.7)
 
     if len(dist_names) or skew_fit:
         xmin, xmax = data.min(), data.max()
@@ -67,6 +67,8 @@ def plot_single_hist(data, ax=None,
     if title:
         ax.set_title(title)
     ax.legend(prop={'size':12},loc=2)
+    if xlim:
+        ax.set_xlim(xlim)
 
     return ax
 
@@ -219,7 +221,7 @@ def plot_ols(df, x_col, y_col, logx=True, logy=False,
     plt.show()
 
     if print_reg:
-        print results.summary()
-        print '\n' + 120 * '-' + 2 * '\n'
+        print (results.summary())
+        print ('\n' + 120 * '-' + 2 * '\n')
 
     return results

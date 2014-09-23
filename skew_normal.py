@@ -45,7 +45,7 @@ try:
     owens = None
     #import owens
 except:
-    print 'owens not found'
+    print ('owens not found')
 
 
 def T_Owen_int(h, a, jmax=50, cut_point=6):

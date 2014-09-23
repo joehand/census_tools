@@ -8,7 +8,7 @@ def ols_reg(x, y, print_results=False):
     X = sm.add_constant(x, prepend=True) #Add a column of ones to allow the calculation of the intercept
     results = sm.OLS(y, X).fit()
     if print_results:
-        print results.summary()
+        print (results.summary())
     return results
 
 def _create_analysis_cols(df, analysis_cols, log_analysis,
@@ -50,7 +50,7 @@ def _create_analysis_cols(df, analysis_cols, log_analysis,
             })
 
         if data.mean() == 'NaN':
-            print df
+            print (df)
 
         final_analysis_cols.extend([column + '_mean',
                 column + '_variance',column + '_stdev'])
